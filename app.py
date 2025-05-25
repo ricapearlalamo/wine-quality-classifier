@@ -2,14 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_auc_score, roc_curve
 from sklearn.preprocessing import StandardScaler
+from sklearn.inspection import permutation_importance
 import matplotlib.pyplot as plt
 import seaborn as sns
-import shap
 import warnings
 
 # Suppress warnings
@@ -82,17 +80,18 @@ if st.button("🚀 Predict Quality"):
         ax_bar.text(i, v + 0.02, f"{v:.2f}", ha='center', fontweight='bold')
     st.pyplot(fig_bar)
 
-    # --- SHAP Explanation ---
-    st.subheader("🔍 SHAP Explanation (Why this prediction?)")
-    try:
-        explainer = shap.Explainer(knn, X_train)
-        shap_values = explainer(user_df_scaled)
-        shap.plots.waterfall(shap_values[0], show=False)
-        fig_shap = plt.gcf()
-        fig_shap.set_size_inches(6, 4)
-        st.pyplot(fig_shap)
-    except Exception as e:
-        st.warning(f"⚠️ SHAP explanation error: {e}")
+    # --- Permutation Feature Importance ---
+    st.subheader("📌 Top Influential Features (Permutation Importance)")
+    result = permutation_importance(knn, X_test, y_test, n_repeats=10, random_state=42, n_jobs=-1)
+    importance_df = pd.DataFrame({
+        "Feature": X.columns,
+        "Importance": result.importances_mean
+    }).sort_values(by="Importance", ascending=False)
+
+    fig_imp, ax_imp = plt.subplots(figsize=(6, 4))
+    sns.barplot(data=importance_df, x="Importance", y="Feature", palette="mako", ax=ax_imp)
+    ax_imp.set_title("Feature Importance (Permutation Based)")
+    st.pyplot(fig_imp)
 
 # --- Footer ---
 st.caption("Developed for Data Mining Final Project | Follows the CRISP-DM Framework")
